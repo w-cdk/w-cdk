@@ -1,0 +1,36 @@
+<template>
+  <div>
+    <h2>Count: \${state.count}</h2>
+    <button @click="\${actions.increment}">Increment</button>
+    <button @click="\${actions.decrement}">Decrement</button>
+  </div>
+</template>
+
+<style src="./counter.css"></style>
+
+<script>
+  export default {
+    name: 'my-counter',
+    setup() {
+      const state = reactive({ count: 0 });
+
+      const increment = () => {
+        state.count++;
+        this.update();
+      };
+
+      const decrement = () => {
+        state.count--;
+        this.update();
+      };
+
+      const actions = { increment, decrement };
+
+      onMounted(() => {
+        console.log('Component mounted');
+      });
+
+      return { state, actions };
+    }
+  };
+</script>
