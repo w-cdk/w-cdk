@@ -1,36 +1,25 @@
-<template>
+---
+template: w-counter
+style: w-counter.css
+---
+<template id="w-counter">
   <div>
-    <h2>Count: \${state.count}</h2>
-    <button @click="\${actions.increment}">Increment</button>
-    <button @click="\${actions.decrement}">Decrement</button>
+    <h2>Count: {{ state.count }}</h2>
+    <button @click="increment">Increment</button>
   </div>
 </template>
+---
+props: {
+  initialCount: { type: Number, default: 0 }
+}
 
-<style src="./counter.css"></style>
+state: {
+  count: 0
+}
 
-<script>
-  export default {
-    name: 'my-counter',
-    setup() {
-      const state = reactive({ count: 0 });
-
-      const increment = () => {
-        state.count++;
-        this.update();
-      };
-
-      const decrement = () => {
-        state.count--;
-        this.update();
-      };
-
-      const actions = { increment, decrement };
-
-      onMounted(() => {
-        console.log('Component mounted');
-      });
-
-      return { state, actions };
-    }
-  };
-</script>
+methods: {
+  increment() {
+    this.state.count++;
+    this.update();
+  }
+}
