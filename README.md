@@ -1,399 +1,126 @@
-### Web Component Development Kit (w-cdk) Concept Guide
+# w-cdk: A Framework for Building Web Components
 
-## Project Overview
+**Important Note:** This is a concept project under active R&D and is not yet ready for development or production use.
 
-The goal is to develop a web component library named `w-cdk` with a focus on simplicity, performance, and developer experience. The `.wcdk` files encapsulate the template, styles, and script for each component.
+---
 
-### 1. Project Structure
+**w-cdk** is a cutting-edge framework designed to streamline the creation of web components, drawing inspiration from visual design tools like Figma and the reactive programming paradigms of modern frontend frameworks. 
 
+## Key Features
+
+* **Intuitive `.wcdk` Syntax:** Define your components declaratively with a clear and concise syntax encompassing template, style, and script sections.
+* **Powerful Runtime:** The `w-cdk-runtime` handles parsing, component instantiation, rendering, reactivity, event handling, and lifecycle management, bringing your components to life.
+* **Single Responsibility Principle:** Encourages the development of focused, reusable components, promoting modularity and maintainability.
+* **One-Way Data Binding:**  Ensures a predictable and efficient data flow through props (parent to child) and events (child to parent).
+* **Performance Optimization:** The runtime is designed for optimal performance, ensuring fast rendering and updates.
+* **Developer-Friendly:**  Clear error messages and helpful debugging tools enhance the development experience.
+
+## Getting Started
+
+1. **Install w-cdk:**
 ```
-w-cdk/
-├── src/
-│   ├── state.js
-│   ├── lifecycle.js
-│   ├── vdom.js
-│   ├── index.js
-├── examples/
-│   ├── counter/
-│   │   ├── counter.wcdk
-│   │   ├── counter.css
-│   │   ├── index.html
-│   │   └── main.js
-├── plugins/
-│   └── wcdk-plugin.js
-├── package.json
-├── vite.config.js
-└── README.md
+bash npm install w-cdk
 ```
-
-### 2. Core Library
-
-#### File: `src/state.js`
-
-The state management system uses a reactive proxy to watch for changes.
-
-```javascript
-export function reactive(initialState) {
-  return new Proxy(initialState, {
-    set(target, property, value) {
-      target[property] = value;
-      return true;
-    },
-  });
-}
+2. **Create a `.wcdk` file:**
 ```
-
-#### File: `src/lifecycle.js`
-
-Lifecycle hooks to manage component lifecycle events.
-
-```javascript
-export const lifecycle = {
-  onMounted: [],
-  onUpdated: [],
-  onBeforeMount: [],
-  onBeforeUpdate: [],
-  onBeforeDestroy: [],
-};
-
-export function onMounted(callback) {
-  lifecycle.onMounted.push(callback);
-}
-
-export function onUpdated(callback) {
-  lifecycle.onUpdated.push(callback);
-}
-
-export function onBeforeMount(callback) {
-  lifecycle.onBeforeMount.push(callback);
-}
-
-export function onBeforeUpdate(callback) {
-  lifecycle.onBeforeUpdate.push(callback);
-}
-
-export function onBeforeDestroy(callback) {
-  lifecycle.onBeforeDestroy.push(callback);
-}
-
-export function triggerLifecycleHooks(hook) {
-  lifecycle[hook].forEach(callback => callback());
-}
-
-export function clearLifecycleHooks() {
-  Object.keys(lifecycle).forEach(hook => {
-    lifecycle[hook] = [];
-  });
-}
-```
-
-#### File: `src/vdom.js`
-
-Functions to parse the template, generate the VDOM, and render it.
-
-```javascript
-import { parse } from 'node-html-parser';
-
-export function parseTemplate(template) {
-  const root = parse(template);
-  return transformNode(root);
-}
-
-function transformNode(node) {
-  // Handle text nodes
-  if (node.nodeType === 3) {
-    return {
-      type: 'text',
-      content: node.rawText.trim()
-    };
-  }
-
-  // Handle element nodes
-  const astNode = {
-    tag: node.tagName,
-    attrs: node.attributes,
-    children: []
-  };
-
-  if (node.childNodes) {
-    astNode.children = node.childNodes.map(transformNode);
-  }
-
-  return astNode;
-}
-
-export function generateVDOM(ast, state, actions) {
-  const createElement = (node) => {
-    if (node.type === 'text') {
-      return node.content;
-    }
-
-    const element = {
-      tag: node.tag,
-      attrs: node.attrs,
-      children: node.children.map(createElement)
-    };
-
-    return element;
-  };
-
-  return createElement(ast);
-}
-
-export function renderVDOM(vdom, parent) {
-  parent.innerHTML = ''; // Clear the previous content
-
-  const createElement = (vnode) => {
-    if (typeof vnode === 'string') {
-      return document.createTextNode(vnode);
-    }
-
-    const element = document.createElement(vnode.tag);
-
-    if (vnode.attrs) {
-      Object.keys(vnode.attrs).forEach(attr => {
-        if (attr.startsWith('@')) {
-          const eventName = attr.substring(1);
-          element.addEventListener(eventName, actions[vnode.attrs[attr]]);
-        } else {
-          element.setAttribute(attr, vnode.attrs[attr]);
-        }
-      });
-    }
-
-    vnode.children.forEach(child => {
-      element.appendChild(createElement(child));
-    });
-
-    return element;
-  };
-
-  parent.appendChild(createElement(vdom));
-}
-```
-
-#### File: `src/index.js`
-
-Export the core functions.
-
-```javascript
-export { reactive } from './state.js';
-export { onMounted, onUpdated, onBeforeMount, onBeforeUpdate, onBeforeDestroy, triggerLifecycleHooks, clearLifecycleHooks } from './lifecycle.js';
-export { parseTemplate, generateVDOM, renderVDOM } from './vdom.js';
-```
-
-### 3. Vite Plugin
-
-#### File: `plugins/wcdk-plugin.js`
-
-The Vite plugin to handle `.wcdk` files.
-
-```javascript
-import { parse } from 'node-html-parser';
-import fs from 'fs';
-import path from 'path';
-
-export default function wcdkPlugin() {
-  return {
-    name: 'wcdk-plugin',
-    transform(code, id) {
-      if (!id.endsWith('.wcdk')) return;
-
-      const root = parse(code);
-      const templateContent = root.querySelector('template').innerHTML;
-      const scriptContent = root.querySelector('script').innerHTML;
-      const stylePath = path.resolve(path.dirname(id), root.querySelector('style').getAttribute('src'));
-      const styles = fs.readFileSync(stylePath, 'utf-8');
-
-      return {
-        code: `
-          import { parseTemplate, generateVDOM, renderVDOM } from 'w-cdk';
-          import { reactive, onMounted, triggerLifecycleHooks, clearLifecycleHooks } from 'w-cdk';
-
-          const templateAST = parseTemplate(\`${templateContent.replace(/`/g, '\\`')}\`);
-
-          ${scriptContent.replace('export default', 'const component =')}
-
-          class CustomElement extends HTMLElement {
-            constructor() {
-              super();
-              this.attachShadow({ mode: 'open' });
-              const { state, actions } = component.setup.call(this);
-              this.state = state;
-              this.actions = actions;
-              this.applyStyles();
-            }
-
-            applyStyles() {
-              const styleElement = document.createElement('style');
-              styleElement.textContent = \`${styles.replace(/`/g, '\\`')}\`;
-              this.shadowRoot.appendChild(styleElement);
-            }
-
-            connectedCallback() {
-              triggerLifecycleHooks('onBeforeMount');
-              this.update();
-              triggerLifecycleHooks('onMounted');
-            }
-
-            disconnectedCallback() {
-              triggerLifecycleHooks('onBeforeDestroy');
-              clearLifecycleHooks();
-            }
-
-            update() {
-              triggerLifecycleHooks('onBeforeUpdate');
-              const vdom = generateVDOM(templateAST, this.state, this.actions);
-              renderVDOM(vdom, this.shadowRoot);
-              triggerLifecycleHooks('onUpdated');
-            }
-          }
-
-          window.customElements.define(component.name, CustomElement);
-        `,
-        map: null
-      };
-    },
-    handleHotUpdate({ file, server }) {
-      if (file.endsWith('.wcdk')) {
-        server.ws.send({ type: 'full-reload', path: '*' });
-      }
-    }
-  };
-}
-```
-
-### 4. Vite Configuration
-
-#### File: `vite.config.js`
-
-Configure Vite to use the custom plugin.
-
-```javascript
-import { defineConfig } from 'vite';
-import wcdkPlugin from './plugins/wcdk-plugin';
-import path from 'path';
-
-export default defineConfig({
-  plugins: [wcdkPlugin()],
-  resolve: {
-    alias: {
-      'w-cdk': path.resolve(__dirname, 'src')
-    },
-    extensions: ['.js', '.wcdk', '.css']
-  },
-  server: {
-    open: '/examples/counter/index.html'
-  }
-});
-```
-
-### 5. Example Component
-
-#### File: `examples/counter/counter.wcdk`
-
-A simple counter component.
-
-```html
-<template>
-  <div>
-    <h2>Count: \${state.count}</h2>
-    <button @click="increment">Increment</button>
-    <button @click="decrement">Decrement</button>
-  </div>
+---
+template: w-counter
+style: counter.css 
+---
+<template id="w-counter">
+    <div>
+        <h2>Count: {{state.count}}</h2>
+        <button @click="increment">Increment</button>
+        <button @click="decrement">Decrement</button>
+    </div>
 </template>
+---
 
-<style src="./counter.css"></style>
+imports: [
+    'dispatch from w-cdk'
+]
 
-<script>
-  export default {
-    name: 'my-counter',
-    setup() {
-      const state = reactive({ count: 0 });
+props: {
+    *initialCount: { type: Number, default: 0 }
+}
 
-      const increment = () => {
-        state.count++;
-        this.update();
-      };
+state: {
+    count: { type: Number, default: props.initialCount }, // Use prop if provided, otherwise default to 0
+    isLoading: { type: Boolean, default: false },
+    userData: { type: Object, default: {} }
+}
 
-      const decrement = () => {
-        state.count--;
-        this.update();
-      };
-
-      const actions = { increment, decrement };
-
-      onMounted(() => {
+lifecycle: {
+    onmount() {
         console.log('Component mounted');
-      });
-
-      return { state, actions };
+        this.state.count = this.props.initialCount; // Initialize from prop
+    },
+    onupdate() {
+        console.log('Component updated');
+    },
+    ondestroy() {
+        console.log('Component destroyed');
     }
-  };
-</script>
-```
+}
 
-#### File: `examples/counter/counter.css`
+actions: {
+    increment() {
+        this.state.count++;
+        this.update(); 
+        this.emit('countChanged', this.state.count); // Emit the event with the new count value
+    },
+    decrement() {
+        this.state.count--;
+        this.update();
+    }
+}
 
-Styles for the counter component.
+methods: {
+    handleClick() {
+        // Handle other events here
+    }
+}
 
-```css
-button {
-  padding: 8px 16px;
-  margin: 5px;
-  background-color: #4CAF50; /* Green */
-  color: white;
-  border: none;
+events: [
+    'countChanged' // Example custom event
+]
+
+controllers: {
+    async fetchData() {
+        console.log('Fetching data...');
+    }
 }
 ```
-
-#### File: `examples/counter/index.html`
-
-HTML file to test the component.
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Counter Example</title>
-</head>
-<body>
-  <my-counter></my-counter>
-  <script type="module" src="./main.js"></script>
-</body>
-</html>
+3. **Use the component in your HTML:**
+```
+  <w-counter></w-counter>
 ```
 
-#### File: `examples
+## Architecture
 
-/counter/main.js`
+The `w-cdk` architecture consists of two main parts:
 
-Main entry file for the counter example.
+* **`.wcdk` File Format:** A declarative syntax for defining web components, including their structure, style, and behavior.
+* **`w-cdk-runtime`:** The engine that parses `.wcdk` files, instantiates components, renders them into the DOM, and manages their lifecycle and reactivity.
 
-```javascript
-import './counter.wcdk';
-```
+For a detailed overview of the architecture, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-### 6. Running the Project
+## Future Plans
 
-1. **Navigate to the `w-cdk` directory:**
+* **Two-Way Data Binding (Optional):**  Provide a mechanism for two-way data binding for specific use cases.
+* **Advanced Templating Features:**  Support more advanced templating features like custom directives and conditional rendering.
+* **Server-Side Rendering (SSR):**  Enable server-side rendering for improved performance and SEO.
+* **TypeScript Support:**  Integrate with TypeScript for enhanced type safety and developer productivity.
 
-   ```bash
-   cd w-cdk
-   ```
+## Contributing
 
-2. **Install dependencies:**
+We welcome contributions from the community! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) guide for details on how to get involved.
 
-   ```bash
-   npm install
-   ```
+## License
 
-3. **Start the Vite development server:**
+This project is licensed under the [MIT License](LICENSE).
 
-   ```bash
-   npm run dev
-   ```
+---
 
-This setup ensures that the template is correctly parsed, the VDOM is properly generated and rendered in the shadow DOM, and the component functions as expected. By following these steps, your counter component should render correctly with functional buttons inside the shadow DOM.
+
+**Stay tuned for updates on the development of w-cdk!**
